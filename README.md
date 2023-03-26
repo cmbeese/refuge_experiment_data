@@ -19,10 +19,6 @@ null_vars.csv - test profiles for a run for a flat reef and all unaltered mechan
 sela_profiles.csv - mean, median, mode, maximum, and minimum availability of refuge (percentage) for each bin 
                  empirically derived from Selayar data and (2018) refuge function
 
-sela_refuges.csv - mean, median, mode, maximum, and minimum availability to predators (proportion) for each bin 
-                empirically derived from Selayar data and (2018) refuge function
-
-
 R Scripts:
 
 ROE_model - model function
