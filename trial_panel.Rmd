@@ -1,0 +1,193 @@
+Run any individual profile
+
+```{r setup}
+
+# Laptop
+setwd('C:/Users/Chelsey/OneDrive - Victoria University of Wellington - STAFF/Thesis/ROE - Refuge Optimization Experiment/Model In Progress/ROE')
+
+# Load workspace with initial run data so we don't have to run a start simulation
+load("C:/Users/Chelsey/OneDrive - Victoria University of Wellington - STAFF/Thesis/ROE - Refuge Optimization Experiment/Model In Progress/ROE/ROE_initial.RData")
+
+# Source Functions ----------------------------------------------------------------------------------------------------
+# Call in necessary functions for creating parameters and running model
+source('ROE_model.r')
+source('ROE_params.r')
+
+# Set model parameters using parameter input file
+params <- set_param()
+
+# BIN SET UP -----------------------------------------------------------------------------------------------------------
+
+# Set ranges of starting and ending values for size bins
+start_length = c(seq(0,45,5))
+end_length   = c(seq(5,50,5))
+
+# Set parameters for length to weight conversion
+a = 0.025
+b = 3
+
+# Convert length bins to mass using same length weight conversion as used in data
+start = a*start_length^b
+end   = a*end_length^b
+end[10] = 3500
+
+# Set start and end parameters
+params$start1  = start[1]
+params$start2  = start[2]
+params$start3  = start[3]
+params$start4  = start[4]
+params$start5  = start[5]
+params$start6  = start[6]
+params$start7  = start[7]
+params$start8  = start[8]
+params$start9  = start[9]
+params$start10 = start[10]
+
+# End 
+params$end1   = end[1] 
+params$end2   = end[2] 
+params$end3   = end[3] 
+params$end4   = end[4] 
+params$end5   = end[5] 
+params$end6   = end[6] 
+params$end7   = end[7] 
+params$end8   = end[8] 
+params$end9   = end[9] 
+params$end10  = end[10]
+
+# Set settlement size for trials
+params$settle = 0.1
+
+# Remove unnecessary parameters from environment
+rm(a,b,end_length,start_length, start, end)
+
+```
+
+```{r runmodel, fig.height = 10.5, fig.height = 7.5}
+
+# Load variables and create results storage
+
+# Load CSV file with parameter bins
+multi_vars = read.csv('multi_vars.csv', header = TRUE,  fileEncoding = "UTF-8-BOM")
+
+# Pull out ideal trials for each parameter
+trial_vars = multi_vars[c(9,11,382,351),]
+colnames(trial_vars) = c("run","bin1","bin2","bin3","bin4","bin5","bin6","bin7","bin8","bin9","bin10")
+
+# Create matrix full of zeroes to hold output from model runs, convert to named data framewor
+trial_res        <- data.frame(matrix(0, nrow(trial_vars), 8))
+names(trial_res) <- c("run","ideal_for","pred5_bm","herb5_bm","fpred_prod",
+                      "fherb_prod","ftot_prod","tot5_bm")
+
+trial_res$ideal_for = c("Resilience","Tourism","Fisheries","All Services")
+
+# Create lists to hold mortality data
+trial_predMort <- list(1)
+trial_herbMort <- list(1)
+trial_invMort  <- list(1)
+
+# Create list to hold refuges
+trial_refuges <- list(1)
+
+# Open pdf to capture model output plots
+pdf("trial_plots.pdf")
+
+# Designate which of the 500 refuge profiles to run
+for (i in (1:nrow(trial_vars))){
+  
+# Set testing refuge profiles
+  params$bin1  = trial_vars$bin1[[i]]
+  params$bin2  = trial_vars$bin2[[i]]
+  params$bin3  = trial_vars$bin3[[i]]
+  params$bin4  = trial_vars$bin4[[i]]
+  params$bin5  = trial_vars$bin5[[i]]
+  params$bin6  = trial_vars$bin6[[i]]
+  params$bin7  = trial_vars$bin7[[i]]
+  params$bin8  = trial_vars$bin8[[i]]
+  params$bin9  = trial_vars$bin9[[i]]
+  params$bin10 = trial_vars$bin10[[i]]
+  
+  params$elseAv = 1
+  
+  # Run model using initial results (without complexity) as starting point
+  res <- run_model(params = params, initial.run = F)
+  
+  # Assign outputs to result matrix
+  
+  # Env Data
+  trial_res$run[[i]]  <- trial_vars$run[[i]]
+  
+  # Biomass greater than 5 cm (settled, complexity relevant)
+  trial_res$pred5_bm[[i]] <- res$Pred_dat_gm_5
+  trial_res$herb5_bm[[i]] <- res$Herb_dat_gm_5
+
+  # Fisheries productivity
+  trial_res$fpred_prod[[i]] <- res$Fpred_prod
+  trial_res$fherb_prod[[i]] <- res$Fherb_prod
+  
+  # Find totals
+  trial_res$ftot_prod[[i]] <- res$Fpred_prod + res$Fherb_prod
+  trial_res$tot5_bm[[i]]   <- res$Pred_dat_gm_5 +res$Herb_dat_gm_5
+  
+  # Mortality
+  trial_predMort[[i]] <- res$P_mrt
+  trial_herbMort[[i]] <- res$H_mrt
+  trial_invMort [[i]] <- res$I_mrt
+  
+  # Refuges
+  trial_refuges[[i]] <- res$refugeData
+  
+  # Plot results to check
+  #par(mfrow = c(2, 2))
+  
+  # Size spectra
+  plotsizespectrum(res, params)
+  title(main = "Normalized Size Spectra",
+        sub = paste(trial_res$ideal_for[[i]]),
+        xlab = "Log Body Mass (g)", ylab = "Log Abundance")
+  
+  # Biomass
+  plotbiomass(res,params)
+  title(main = "Biomass",
+        sub = paste(trial_res$ideal_for[[i]]),
+        ylab = "Biomass",
+        xlab = "Time")
+  
+  # Refuges
+  plot(params$x, trial_refuges[[i]], xlim = c(-2,4), type = 'l',color = "purple2",
+       main = "Refuge Profile", 
+       sub = paste(trial_res$ideal_for[[i]]),
+       xlab = "Log Body Mass (g)", 
+       ylab = "Proportion Vulnerable to Predation")
+  
+  # Mortality
+  plot(trial_predMort[[i]] ~ params$x, type = "l", col = "red3", size = 1,
+       xlim = c(-2, 4), ylim = c(0,40),
+       main = "Mortality",
+       sub = paste(trial_res$ideal_for[[i]]), 
+       xlab = "Log Body Mass (g)")
+  
+  points(trial_herbMort[[i]]~params$x, type = "l", col = "green3", size = 1)
+         #xlim = c(-2, 4), ylim = c(0,20),
+         #main = "Herbivore Mortality", 
+         #sub = paste(trial_res$ideal_for[[i]]), 
+         #xlab = "Log Body Mass (g)")
+  
+  points(trial_invMort[[i]]~params$x, type = "l", col = "blue3", size = 1)
+         #xlim = c(-2, 4), ylim = c(0,40),
+         #main = "Invertebrate Mortality", 
+         #sub = paste(trial_res$ideal_for[[i]]), 
+         #xlab = "Log Body Mass (g)")
+        
+  
+}
+
+#Close pdf
+dev.off()
+
+# Save image
+save.image('trial_res.Rdata')
+
+write.csv(trial_res,"ideal_results.csv")
+
+```
