@@ -18,6 +18,12 @@ null_vars.csv - test profiles for a run for a flat reef and all unaltered mechan
 
 sela_profiles.csv - mean, median, mode, maximum, and minimum availability of refuge (percentage) for each bin 
                  empirically derived from Selayar data and (2018) refuge function
+                 
+fishing_control_res.csv - results of trials with no complexity at different minimum fishing sizes
+
+fishing_single_res.csv - results of single refuge addition trials at different minimum fishing sizes
+
+fishing_multi_res.csv - results of whole profile trials at different minimum fishing sizes
 
 R Scripts:
 
